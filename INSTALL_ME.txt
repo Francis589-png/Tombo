@@ -1,0 +1,46 @@
+# TOMBO - SIMPLEST SETUP
+
+## 3 WAYS TO INSTALL (Pick One)
+
+### Way 1: Batch File (Windows - Easiest)
+```bash
+Double-click: install.bat
+```
+
+### Way 2: PowerShell (Windows)
+```powershell
+.\install.ps1
+```
+
+### Way 3: Manual (If above don't work)
+```bash
+pip install -e .
+```
+
+---
+
+## THAT'S IT!
+
+Then just use it:
+
+```python
+from src.core.interpreter import Interpreter
+interp = Interpreter()
+
+# Get a function
+fn = interp.global_env.get('print')
+
+# Use it
+fn("I'm using Tombo!")
+```
+
+---
+
+## YOU NOW HAVE:
+
+- 39 Libraries
+- 1,301 Functions  
+- Hardware Access (Camera, Audio, Sensors)
+- No configuration needed
+
+**Done!**

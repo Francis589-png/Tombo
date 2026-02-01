@@ -1,0 +1,76 @@
+# Tombo Standard Library Demo
+# This file demonstrates core library functions across multiple modules
+
+# ============ MATH LIBRARY ============
+println("=== MATH LIBRARY ===")
+println(str(PI))
+println(sqrt(16))
+println(sin(0))
+println(round(3.7))
+
+# ============ STRING LIBRARY ============
+println("=== STRING LIBRARY ===")
+let greeting = "hello world"
+println(upper(greeting))
+println(capitalize(greeting))
+let words = split(greeting, " ")
+println(words)
+println(join("-", words))
+
+# ============ COLLECTIONS LIBRARY ============
+println("=== COLLECTIONS LIBRARY ===")
+let arr = [3, 1, 4, 1, 5, 9, 2, 6]
+sort(arr)
+println(arr)
+println(slice(arr, 0, 3))
+let flattened = flatten([[1, 2], [3, 4], [5, 6]])
+println(flattened)
+
+# ============ CORE TYPE FUNCTIONS ============
+println("=== CORE TYPE CONVERSION ===")
+println(type(42))
+println(type("hello"))
+println(type([1, 2, 3]))
+println(isinstance(3.14, "float"))
+println(str(123))
+println(int("456"))
+println(bool(0))
+
+# ============ TIME LIBRARY ============
+println("=== TIME LIBRARY ===")
+let current = now()
+println("Current datetime: OK")
+let td = today()
+println("Today's date: OK")
+
+# ============ I/O LIBRARY ============
+println("=== I/O LIBRARY ===")
+let cwd = current_dir()
+println(cwd)
+let files = list_dir(cwd)
+println(first(files))
+
+# ============ COMBINED OPERATIONS ============
+println("=== COMBINED OPERATIONS ===")
+
+# Function using library functions
+defi double(x) => x * 2
+let result = double(21)
+println(result)
+
+# Process a list
+let numbers = [1, 2, 3, 4, 5]
+let sum_val = sum(numbers)
+println(sum_val)
+
+let mean_val = mean(numbers)
+println(mean_val)
+
+# String manipulation pipeline
+let text = "hello world"
+let upper_text = upper(text)
+println(upper_text)
+let chars = split(upper_text, " ")
+println(chars)
+
+println("=== DEMO COMPLETE ===")

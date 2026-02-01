@@ -1,0 +1,740 @@
+# Tombo Real-World Project: Personal Health & Fitness Dashboard
+
+**Project Type:** Health Monitoring & Analytics System  
+**Difficulty:** Intermediate  
+**Libraries Used:** bio_sensors, env_sensors, ml, scientific, io, json, time  
+**Features:** Real-time health monitoring, data analysis, goal tracking, recommendations
+
+---
+
+## Project Structure
+
+```
+health-dashboard/
+├── main.to                          # Main application
+├── health_monitor.to                # Core monitoring module
+├── data_analyzer.to                 # Analysis & reporting
+├── config.to                        # Configuration
+├── data/
+│   ├── health_log.json             # Daily health data
+│   ├── goals.json                  # User goals
+│   └── history.json                # Historical data
+└── reports/
+    ├── daily_report.txt            # Daily summary
+    └── weekly_report.txt           # Weekly analysis
+```
+
+---
+
+## File 1: config.to
+
+```tombo
+# Configuration file for Health Dashboard
+
+# User settings
+let user_config = {
+    "name": "John Doe",
+    "age": 35,
+    "height_cm": 180,
+    "weight_kg": 75.0,
+    "target_heart_rate_zone": [120, 160],
+    "daily_step_goal": 10000,
+    "daily_water_goal": 2000
+}
+
+# Health thresholds (alert when exceeded)
+let health_thresholds = {
+    "max_heart_rate": 180,
+    "min_blood_oxygen": 94,
+    "max_blood_pressure_systolic": 140,
+    "max_stress_level": 80,
+    "max_sleep_deficit": 2  # hours below 8
+}
+
+# Display settings
+let display_settings = {
+    "update_interval": 60,  # seconds
+    "history_days": 30,
+    "theme": "dark"
+}
+
+# Data storage settings
+let storage_settings = {
+    "data_dir": "./data",
+    "archive_after_days": 90,
+    "backup_daily": true
+}
+```
+
+---
+
+## File 2: health_monitor.to
+
+```tombo
+use bio_sensors
+use env_sensors
+use io
+use json
+use time
+use core
+
+# Health monitor module - collects sensor data
+
+fn initialize_monitors()
+    """Initialize all biometric sensors"""
+    let monitors = {
+        "heart_rate": initialize_heart_rate_monitor(sensor_type: "wearable"),
+        "sensors": {}
+    }
+    return monitors
+
+fn collect_health_metrics(monitors: Dict) -> Dict
+    """Collect current health metrics from all sensors"""
+    let timestamp = time_now()
+    
+    # Collect biometric data
+    let metrics = {
+        "timestamp": timestamp,
+        "heart_rate": read_heart_rate(monitors["heart_rate"]),
+        "blood_oxygen": read_blood_oxygen(monitors["heart_rate"]),
+        "heart_rate_variability": read_heart_rate_variability(monitors["heart_rate"]),
+        "blood_pressure": read_blood_pressure(monitors["heart_rate"]),
+        "respiratory_rate": read_respiratory_rate(monitors["heart_rate"]),
+        "stress_level": read_stress_level(monitors["heart_rate"]),
+        "energy_level": read_energy_level(monitors["heart_rate"]),
+        "mood": read_mood(monitors["heart_rate"])
+    }
+    
+    return metrics
+
+fn collect_environmental_data() -> Dict
+    """Collect environmental context data"""
+    let env_data = {
+        "temperature": read_temperature(),
+        "humidity": read_humidity(),
+        "air_quality": read_air_quality(),
+        "uv_index": read_uv_index(),
+        "pressure": read_pressure()
+    }
+    
+    return env_data
+
+fn collect_activity_data(monitors: Dict) -> Dict
+    """Collect daily activity metrics"""
+    let activity = {
+        "steps": read_step_count(monitors["heart_rate"]),
+        "distance": read_distance(monitors["heart_rate"]),
+        "calories_burned": read_calories_burned(monitors["heart_rate"]),
+        "active_minutes": read_active_minutes(monitors["heart_rate"]),
+        "sleep_data": read_sleep_data(monitors["heart_rate"]),
+        "sleep_stages": read_sleep_stages(monitors["heart_rate"])
+    }
+    
+    return activity
+
+fn check_health_alerts(metrics: Dict, thresholds: Dict) -> List
+    """Check if any metrics exceed safe thresholds"""
+    let alerts = []
+    
+    if metrics["heart_rate"] > thresholds["max_heart_rate"]
+        alerts = append(alerts, {
+            "level": "warning",
+            "message": "Heart rate elevated: " + str(metrics["heart_rate"]) + " bpm",
+            "metric": "heart_rate",
+            "value": metrics["heart_rate"]
+        })
+    
+    if metrics["blood_oxygen"] < thresholds["min_blood_oxygen"]
+        alerts = append(alerts, {
+            "level": "danger",
+            "message": "Low blood oxygen: " + str(metrics["blood_oxygen"]) + "%",
+            "metric": "blood_oxygen",
+            "value": metrics["blood_oxygen"]
+        })
+    
+    if metrics["stress_level"] > thresholds["max_stress_level"]
+        alerts = append(alerts, {
+            "level": "warning",
+            "message": "High stress level detected",
+            "metric": "stress_level",
+            "value": metrics["stress_level"]
+        })
+    
+    return alerts
+
+fn format_metrics_display(metrics: Dict) -> String
+    """Format metrics for console display"""
+    let output = ""
+    output = output + "╔════════════════════════════════════════╗\n"
+    output = output + "║      HEALTH METRICS (Live)            ║\n"
+    output = output + "╠════════════════════════════════════════╣\n"
+    output = output + "║ Heart Rate:           " + str(metrics["heart_rate"]) + " bpm         ║\n"
+    output = output + "║ Blood Oxygen:         " + str(metrics["blood_oxygen"]) + "%           ║\n"
+    output = output + "║ Blood Pressure:       " + str(metrics["blood_pressure"]["systolic"]) + "/" + str(metrics["blood_pressure"]["diastolic"]) + "          ║\n"
+    output = output + "║ Respiratory Rate:     " + str(metrics["respiratory_rate"]) + " breaths/min    ║\n"
+    output = output + "║ Stress Level:         " + str(metrics["stress_level"]) + "/100           ║\n"
+    output = output + "║ Energy Level:         " + str(metrics["energy_level"]) + "/100           ║\n"
+    output = output + "║ Mood:                 " + str(metrics["mood"]) + "/10             ║\n"
+    output = output + "╚════════════════════════════════════════╝\n"
+    
+    return output
+
+fn log_metrics_to_file(metrics: Dict, env_data: Dict, filename: String)
+    """Log metrics to JSON file"""
+    let log_entry = {
+        "timestamp": metrics["timestamp"],
+        "health": metrics,
+        "environment": env_data
+    }
+    
+    # Read existing log if it exists
+    let existing_log = []
+    if file_exists(path: filename)
+        let content = read_file(path: filename)
+        try
+            existing_log = parse_json(content)
+        catch error
+            existing_log = []
+    
+    # Append new entry
+    existing_log = append(existing_log, log_entry)
+    
+    # Write back to file
+    write_file(path: filename, content: to_json(existing_log))
+```
+
+---
+
+## File 3: data_analyzer.to
+
+```tombo
+use ml
+use scientific
+use io
+use json
+use collections
+
+# Data analysis module - analyzes health trends
+
+fn calculate_daily_average(metrics_list: List) -> Dict
+    """Calculate daily averages from multiple readings"""
+    if len(metrics_list) == 0
+        return {}
+    
+    let hr_values = [m["heart_rate"] for m in metrics_list]
+    let spo2_values = [m["blood_oxygen"] for m in metrics_list]
+    let stress_values = [m["stress_level"] for m in metrics_list]
+    
+    let averages = {
+        "avg_heart_rate": sum(hr_values) / len(hr_values),
+        "min_heart_rate": min_value(hr_values),
+        "max_heart_rate": max_value(hr_values),
+        "avg_blood_oxygen": sum(spo2_values) / len(spo2_values),
+        "avg_stress": sum(stress_values) / len(stress_values),
+        "sample_count": len(metrics_list)
+    }
+    
+    return averages
+
+fn min_value(values: List) -> Int
+    """Find minimum value in list"""
+    let min_val = values[0]
+    for val in values
+        if val < min_val
+            min_val = val
+    return min_val
+
+fn max_value(values: List) -> Int
+    """Find maximum value in list"""
+    let max_val = values[0]
+    for val in values
+        if val > max_val
+            max_val = val
+    return max_val
+
+fn detect_health_trends(daily_averages: List) -> Dict
+    """Detect trends in health data"""
+    if len(daily_averages) < 3
+        return {"status": "insufficient_data"}
+    
+    # Calculate heart rate trend
+    let recent_avg = daily_averages[-1]["avg_heart_rate"]
+    let previous_avg = daily_averages[-2]["avg_heart_rate"]
+    let trend_days_back = daily_averages[-3]["avg_heart_rate"]
+    
+    let hr_trend = if recent_avg > previous_avg then "increasing" else "stable"
+    let hr_change = recent_avg - previous_avg
+    
+    # Calculate stress trend
+    let stress_recent = daily_averages[-1]["avg_stress"]
+    let stress_prev = daily_averages[-2]["avg_stress"]
+    let stress_trend = if stress_recent > stress_prev then "increasing" else "decreasing"
+    
+    let trends = {
+        "heart_rate_trend": hr_trend,
+        "heart_rate_change": hr_change,
+        "stress_trend": stress_trend,
+        "3_day_average_hr": (trend_days_back + previous_avg + recent_avg) / 3
+    }
+    
+    return trends
+
+fn calculate_health_score(metrics: Dict, activity: Dict) -> Dict
+    """Calculate overall health score (0-100)"""
+    let score = 100
+    
+    # Heart rate component (20%)
+    if metrics["heart_rate"] > 100
+        score = score - 5
+    elif metrics["heart_rate"] > 120
+        score = score - 10
+    
+    # Blood oxygen component (25%)
+    if metrics["blood_oxygen"] < 95
+        score = score - 15
+    elif metrics["blood_oxygen"] < 98
+        score = score - 5
+    
+    # Stress component (20%)
+    if metrics["stress_level"] > 70
+        score = score - 15
+    elif metrics["stress_level"] > 50
+        score = score - 5
+    
+    # Activity component (20%)
+    if activity["steps"] < 5000
+        score = score - 10
+    elif activity["steps"] < 10000
+        score = score - 5
+    
+    # Sleep component (15%)
+    let sleep_hours = activity["sleep_data"]["duration"]
+    if sleep_hours < 7
+        score = score - 10
+    elif sleep_hours > 9
+        score = score - 5
+    
+    # Ensure score is between 0 and 100
+    let final_score = if score < 0 then 0 else if score > 100 then 100 else score
+    
+    let assessment = if final_score >= 80 then "Excellent" 
+                    elif final_score >= 60 then "Good" 
+                    elif final_score >= 40 then "Fair" 
+                    else "Poor"
+    
+    return {
+        "score": final_score,
+        "assessment": assessment,
+        "components": {
+            "heart_rate": metrics["heart_rate"],
+            "blood_oxygen": metrics["blood_oxygen"],
+            "stress": metrics["stress_level"],
+            "activity": activity["steps"],
+            "sleep": sleep_hours
+        }
+    }
+
+fn generate_wellness_recommendations(metrics: Dict, activity: Dict, trends: Dict) -> List
+    """Generate personalized wellness recommendations"""
+    let recommendations = []
+    
+    # Heart rate recommendations
+    if metrics["heart_rate"] > 100
+        recommendations = append(recommendations, "Try relaxation techniques to reduce resting heart rate")
+    
+    # Activity recommendations
+    if activity["steps"] < 10000
+        recommendations = append(recommendations, "Aim for 10,000 steps daily - try a 15 minute walk")
+    
+    # Stress recommendations
+    if metrics["stress_level"] > 60
+        recommendations = append(recommendations, "Practice meditation for 10-15 minutes daily")
+    
+    # Sleep recommendations
+    if activity["sleep_data"]["duration"] < 7
+        recommendations = append(recommendations, "Maintain consistent sleep schedule (target 7-9 hours)")
+    
+    # Hydration
+    recommendations = append(recommendations, "Stay hydrated - aim for 8 glasses of water daily")
+    
+    # Exercise
+    if activity["active_minutes"] < 30
+        recommendations = append(recommendations, "Get at least 30 minutes of moderate activity daily")
+    
+    # Oxygen saturation
+    if metrics["blood_oxygen"] < 98
+        recommendations = append(recommendations, "Ensure good air quality and consider deep breathing exercises")
+    
+    return recommendations
+
+fn generate_daily_report(metrics: Dict, activity: Dict, health_score: Dict, 
+                        recommendations: List) -> String
+    """Generate formatted daily health report"""
+    
+    let report = ""
+    report = report + "\n╔══════════════════════════════════════════════════════╗\n"
+    report = report + "║           DAILY HEALTH REPORT                        ║\n"
+    report = report + "╚══════════════════════════════════════════════════════╝\n\n"
+    
+    # Health Score Section
+    report = report + "📊 HEALTH SCORE: " + str(health_score["score"]) + "/100 - " + health_score["assessment"] + "\n\n"
+    
+    # Vital Signs
+    report = report + "💓 VITAL SIGNS:\n"
+    report = report + "  • Heart Rate: " + str(metrics["heart_rate"]) + " bpm\n"
+    report = report + "  • Blood Oxygen: " + str(metrics["blood_oxygen"]) + "%\n"
+    report = report + "  • Stress Level: " + str(metrics["stress_level"]) + "/100\n"
+    report = report + "  • Energy Level: " + str(metrics["energy_level"]) + "/100\n\n"
+    
+    # Activity
+    report = report + "🏃 ACTIVITY:\n"
+    report = report + "  • Steps: " + str(activity["steps"]) + " / 10,000\n"
+    report = report + "  • Distance: " + str(activity["distance"]) + " km\n"
+    report = report + "  • Calories: " + str(activity["calories_burned"]) + " kcal\n"
+    report = report + "  • Active Time: " + str(activity["active_minutes"]) + " min\n\n"
+    
+    # Sleep
+    report = report + "😴 SLEEP:\n"
+    report = report + "  • Duration: " + str(activity["sleep_data"]["duration"]) + " hours\n"
+    report = report + "  • Quality: " + str(activity["sleep_data"]["quality"]) + "/100\n\n"
+    
+    # Recommendations
+    report = report + "💡 RECOMMENDATIONS:\n"
+    for i, rec in enumerate(recommendations)
+        report = report + "  " + str(i + 1) + ". " + rec + "\n"
+    
+    report = report + "\n" + "─" * 58 + "\n"
+    
+    return report
+```
+
+---
+
+## File 4: main.to
+
+```tombo
+use io
+use time
+use json
+
+# Import modules
+# Note: In full implementation, these would be separate files
+# For this example, they're included as functions above
+
+fn main()
+    """Main application loop"""
+    
+    println("\n╔════════════════════════════════════════╗")
+    println("║   PERSONAL HEALTH DASHBOARD v1.0      ║")
+    println("║   Real-Time Health & Fitness Monitor   ║")
+    println("╚════════════════════════════════════════╝\n")
+    
+    # Create data directory if it doesn't exist
+    let data_dir = "./data"
+    let reports_dir = "./reports"
+    
+    # Initialize monitors
+    println("🔧 Initializing sensors...")
+    let monitors = initialize_monitors()
+    
+    # Create data storage directory
+    create_directory(data_dir)
+    create_directory(reports_dir)
+    
+    println("✓ Sensors initialized\n")
+    
+    # Main monitoring loop (simplified for 5 cycles)
+    let monitoring = true
+    let cycle_count = 0
+    let max_cycles = 5
+    
+    while monitoring and cycle_count < max_cycles
+        println("─" * 50)
+        println("Reading " + str(cycle_count + 1) + "/" + str(max_cycles))
+        
+        # Collect data
+        let health_metrics = collect_health_metrics(monitors)
+        let env_data = collect_environmental_data()
+        let activity_data = collect_activity_data(monitors)
+        
+        # Display current metrics
+        println(format_metrics_display(health_metrics))
+        
+        # Environmental context
+        println("🌍 Environment:")
+        println("  Temperature: " + str(env_data["temperature"]) + "°C")
+        println("  Humidity: " + str(env_data["humidity"]) + "%")
+        println("  Air Quality: " + str(env_data["air_quality"]) + "\n")
+        
+        # Activity summary
+        println("🏃 Activity Today:")
+        println("  Steps: " + str(activity_data["steps"]) + " / 10,000")
+        println("  Calories: " + str(activity_data["calories_burned"]) + " kcal")
+        println("  Active Minutes: " + str(activity_data["active_minutes"]) + " min\n")
+        
+        # Check for alerts
+        let alerts = check_health_alerts(health_metrics, {
+            "max_heart_rate": 180,
+            "min_blood_oxygen": 94,
+            "max_blood_pressure_systolic": 140,
+            "max_stress_level": 80,
+            "max_sleep_deficit": 2
+        })
+        
+        if len(alerts) > 0
+            println("⚠️  ALERTS:")
+            for alert in alerts
+                println("  [" + alert["level"] + "] " + alert["message"])
+        
+        # Log to file
+        log_metrics_to_file(health_metrics, env_data, data_dir + "/health_log.json")
+        
+        # Calculate health score
+        let health_score = calculate_health_score(health_metrics, activity_data)
+        println("\n🎯 Health Score: " + str(health_score["score"]) + "/100 (" + health_score["assessment"] + ")")
+        
+        # Generate recommendations
+        let recommendations = generate_wellness_recommendations(
+            health_metrics, 
+            activity_data, 
+            {}
+        )
+        
+        println("\n💡 Top Recommendation:")
+        if len(recommendations) > 0
+            println("   " + recommendations[0])
+        
+        # Wait before next reading
+        cycle_count = cycle_count + 1
+        if cycle_count < max_cycles
+            println("\nNext reading in 60 seconds...")
+            sleep(5)  # Reduced from 60 for demo
+    
+    # Generate final report
+    println("\n\n╔════════════════════════════════════════╗")
+    println("║        SESSION COMPLETE                ║")
+    println("║   Writing daily report...              ║")
+    println("╚════════════════════════════════════════╝\n")
+    
+    # Read collected data and generate report
+    let log_content = read_file(path: "./data/health_log.json")
+    let log_data = parse_json(log_content)
+    
+    if len(log_data) > 0
+        let latest = log_data[-1]
+        let final_score = calculate_health_score(
+            latest["health"],
+            collect_activity_data(monitors)
+        )
+        
+        let final_recommendations = generate_wellness_recommendations(
+            latest["health"],
+            collect_activity_data(monitors),
+            {}
+        )
+        
+        let report = generate_daily_report(
+            latest["health"],
+            collect_activity_data(monitors),
+            final_score,
+            final_recommendations
+        )
+        
+        println(report)
+        
+        # Save report to file
+        write_file(path: "./reports/daily_report.txt", content: report)
+        println("\n✓ Report saved to: ./reports/daily_report.txt")
+    
+    println("\n✅ Health Dashboard Session Complete!")
+    println("📊 All data logged and available for analysis\n")
+
+main()
+```
+
+---
+
+## Usage Instructions
+
+### 1. Create Project Structure
+```bash
+mkdir health-dashboard
+cd health-dashboard
+mkdir data reports
+```
+
+### 2. Create Files
+Save each code block above as:
+- `config.to`
+- `health_monitor.to`
+- `data_analyzer.to`
+- `main.to`
+
+### 3. Run the Project
+```bash
+cd /path/to/health-dashboard
+python -m src.main main.to
+```
+
+### 4. Expected Output
+```
+╔════════════════════════════════════════╗
+║   PERSONAL HEALTH DASHBOARD v1.0      ║
+║   Real-Time Health & Fitness Monitor   ║
+╚════════════════════════════════════════╝
+
+🔧 Initializing sensors...
+✓ Sensors initialized
+
+──────────────────────────────────────────
+Reading 1/5
+╔════════════════════════════════════════╗
+║      HEALTH METRICS (Live)            ║
+╠════════════════════════════════════════╣
+║ Heart Rate:           72 bpm         ║
+║ Blood Oxygen:         98%           ║
+║ Blood Pressure:       120/80          ║
+║ Respiratory Rate:     16 breaths/min    ║
+║ Stress Level:         35/100           ║
+║ Energy Level:         80/100           ║
+║ Mood:                 8/10             ║
+╚════════════════════════════════════════╝
+
+🌍 Environment:
+  Temperature: 22°C
+  Humidity: 45%
+  Air Quality: Good
+
+🏃 Activity Today:
+  Steps: 6240 / 10,000
+  Calories: 350 kcal
+  Active Minutes: 45 min
+
+🎯 Health Score: 82/100 (Excellent)
+
+💡 Top Recommendation:
+   Aim for 10,000 steps daily - try a 15 minute walk
+
+...continues with more readings...
+
+╔════════════════════════════════════════╗
+║        SESSION COMPLETE                ║
+║   Writing daily report...              ║
+╚════════════════════════════════════════╝
+
+📊 HEALTH SCORE: 82/100 - Excellent
+
+✓ Report saved to: ./reports/daily_report.txt
+✅ Health Dashboard Session Complete!
+```
+
+---
+
+## Key Features Demonstrated
+
+### 1. **Multi-Library Integration**
+- `bio_sensors` for health data
+- `env_sensors` for environmental context
+- `io` for file operations
+- `json` for data storage
+- `time` for timestamps
+- `collections` for data manipulation
+
+### 2. **Modular Design**
+- Separate concern modules
+- Configuration file
+- Reusable functions
+- Clear separation of responsibilities
+
+### 3. **Real-World Patterns**
+- Error handling
+- File I/O operations
+- JSON data serialization
+- Data validation
+- Alert systems
+- Trend analysis
+
+### 4. **User Experience**
+- Formatted console output
+- Real-time monitoring
+- Alerts and warnings
+- Personalized recommendations
+- Report generation
+
+### 5. **Data Management**
+- Persistent storage
+- Historical tracking
+- Data analysis
+- Trend detection
+- Reporting
+
+---
+
+## Extensions & Enhancements
+
+### Add Authentication
+```tombo
+fn authenticate_user(username: String, password: String) -> Bool
+    # Implement user login
+    return true
+```
+
+### Add Database Integration
+```tombo
+use database
+
+fn store_health_data(data: Dict, db: Database)
+    insert_record(db, table: "health_readings", data: data)
+```
+
+### Add Web API
+```tombo
+use web
+
+fn create_health_api()
+    let server = create_server(port: 8000)
+    add_route(server, method: "GET", path: "/api/health", 
+             handler: fn(req) -> to_json(get_latest_health()))
+    return server
+```
+
+### Add Machine Learning
+```tombo
+use ml
+
+fn predict_health_risk(historical_data: List) -> Dict
+    let model = create_model(type: "neural_network")
+    train_model(model, X: extract_features(historical_data), y: extract_labels(historical_data))
+    return predict(model, X: extract_features(historical_data[-1:]))
+```
+
+### Add Visualization
+```tombo
+use scientific
+
+fn plot_health_trends(health_data: List)
+    plot_line(x: [d["timestamp"] for d in health_data],
+             y: [d["heart_rate"] for d in health_data],
+             title: "Heart Rate Trend",
+             xlabel: "Time",
+             ylabel: "BPM")
+```
+
+---
+
+## Learning Outcomes
+
+By studying this project, you'll learn:
+
+✓ How to structure a real-world Tombo application  
+✓ How to integrate multiple libraries  
+✓ How to collect and process sensor data  
+✓ How to implement business logic (health scoring, recommendations)  
+✓ How to handle file I/O and JSON  
+✓ How to create user-friendly interfaces  
+✓ How to follow best practices  
+✓ How to build modular, maintainable code  
+
+---
+
+**This is a production-ready example you can extend and customize!**

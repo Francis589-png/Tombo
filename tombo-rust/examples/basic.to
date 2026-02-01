@@ -1,0 +1,29 @@
+# Simple TOMBO Examples
+
+# Basic arithmetic
+let x = 10
+let y = 20
+println(x + y)
+
+# Strings
+let name = "TOMBO"
+let greeting = "Welcome to " + name
+println(greeting)
+
+# Lists
+let numbers = [1, 2, 3, 4, 5]
+println(numbers[0])
+println(len(numbers))
+
+# Control flow
+if x > 5
+    println("x is greater than 5")
+else
+    println("x is not greater than 5")
+
+# Functions
+def multiply(a, b)
+    return a * b
+
+let result = multiply(3, 4)
+println(result)

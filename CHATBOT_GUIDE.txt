@@ -1,0 +1,42 @@
+Simple TOMBO Chatbot Guide
+==========================
+
+Build a chatbot interactively in the REPL by typing:
+
+Step 1: Define a response function using if/else
+Step 2: Use ask() to get user input  
+Step 3: Loop until user types quit
+
+Try this in the REPL (python tombo.py):
+
+--------
+
+println("Welcome to Chatbot")
+
+name = ask("Your name: ")
+println("Hi " + name)
+
+if ask("Say hi") == "hello"
+    println("Bot: Hello!")
+else
+    println("Bot: Goodbye!")
+end
+
+--------
+
+For complex chatbots, the REPL multi-line mode lets you write:
+
+for i in [1,2,3]
+    println(i)
+end
+
+While loops for continuous chat:
+
+count = 0
+while true
+    text = ask("Say something: ")
+    if text == "quit"
+        break
+    end
+    count = count + 1
+end

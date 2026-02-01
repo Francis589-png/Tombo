@@ -1,0 +1,753 @@
+# Tombo Real-World Project: Web Data Analysis Platform
+
+**Project Type:** Web Scraping, Data Collection & Analytics  
+**Difficulty:** Intermediate  
+**Libraries Used:** web, database, ml, scientific, io, json, regex, time  
+**Features:** Data collection, cleaning, analysis, visualization, reporting
+
+---
+
+## Project Overview
+
+A complete web data analysis platform that:
+1. Collects data from web APIs
+2. Stores in database
+3. Performs statistical analysis
+4. Detects patterns & trends
+5. Generates reports
+6. Provides real-time dashboard
+
+---
+
+## File 1: data_collector.to
+
+```tombo
+# Data collection module
+
+use web
+use json
+use io
+use time
+use regex
+
+fn fetch_weather_data(city: String, units: String = "metric") -> Dict
+    """Fetch weather data from public API"""
+    let api_url = "https://api.weather.gov/points/" + city
+    
+    try
+        let response = http_get(url: api_url)
+        let data = parse_json(response["body"])
+        return data
+    catch error
+        println("❌ Error fetching weather: " + error)
+        return {}
+
+fn fetch_market_data(ticker: String) -> Dict
+    """Fetch stock market data"""
+    let api_url = "https://api.example.com/stock/" + ticker
+    
+    try
+        let response = http_get(url: api_url)
+        let data = parse_json(response["body"])
+        return {
+            "ticker": ticker,
+            "price": data["price"],
+            "change": data["change"],
+            "change_percent": data["change_percent"],
+            "volume": data["volume"],
+            "timestamp": time_now()
+        }
+    catch error
+        println("❌ Error fetching stock data: " + error)
+        return {}
+
+fn validate_data_quality(data: Dict) -> Dict
+    """Validate collected data for quality"""
+    let issues = []
+    let warnings = []
+    
+    # Check for null values
+    for key, value in data
+        if value == nil
+            issues = append(issues, "Missing value for: " + key)
+    
+    # Check for data type consistency
+    if hasattr(data, "price")
+        if type(data["price"]) != "Float"
+            warnings = append(warnings, "Price is not a float: " + str(data["price"]))
+    
+    let quality_score = if len(issues) == 0 then 100 else 100 - (len(issues) * 10)
+    quality_score = quality_score - (len(warnings) * 5)
+    
+    return {
+        "is_valid": len(issues) == 0,
+        "quality_score": quality_score,
+        "issues": issues,
+        "warnings": warnings
+    }
+
+fn normalize_data(data: Dict) -> Dict
+    """Normalize/clean collected data"""
+    let normalized = {}
+    
+    for key, value in data
+        # Convert to lowercase
+        let clean_key = lower(key)
+        
+        # Trim strings
+        let clean_value = if type(value) == "String" then strip(value) else value
+        
+        normalized[clean_key] = clean_value
+    
+    return normalized
+
+fn aggregate_data(data_list: List, group_by: String) -> Dict
+    """Group and aggregate multiple data points"""
+    let grouped = {}
+    
+    for item in data_list
+        let group_key = str(item[group_by])
+        if not group_key in grouped
+            grouped[group_key] = []
+        
+        grouped[group_key] = append(grouped[group_key], item)
+    
+    # Calculate aggregates
+    let result = {}
+    for group_key, items in grouped
+        result[group_key] = {
+            "count": len(items),
+            "items": items
+        }
+    
+    return result
+
+fn log_data_collection(source: String, data_count: Int, quality_score: Float)
+    """Log data collection activity"""
+    let log_entry = {
+        "timestamp": time_now(),
+        "source": source,
+        "records_collected": data_count,
+        "quality_score": quality_score,
+        "status": "success"
+    }
+    
+    # Append to log file
+    let log_file = "./logs/collection.json"
+    let existing_logs = []
+    
+    if file_exists(path: log_file)
+        try
+            let content = read_file(path: log_file)
+            existing_logs = parse_json(content)
+        catch error
+            existing_logs = []
+    
+    existing_logs = append(existing_logs, log_entry)
+    write_file(path: log_file, content: to_json(existing_logs))
+```
+
+---
+
+## File 2: data_analyzer.to
+
+```tombo
+# Data analysis module
+
+use ml
+use scientific
+use io
+use json
+
+fn calculate_statistics(values: List) -> Dict
+    """Calculate statistical measures"""
+    if len(values) == 0
+        return {}
+    
+    # Sort for median
+    let sorted_vals = sort_list(values)
+    
+    # Mean
+    let mean = sum(values) / len(values)
+    
+    # Median
+    let median = sorted_vals[len(sorted_vals) / 2]
+    
+    # Min/Max
+    let min_val = sorted_vals[0]
+    let max_val = sorted_vals[-1]
+    
+    # Standard deviation
+    let variance_sum = 0
+    for val in values
+        variance_sum = variance_sum + ((val - mean) * (val - mean))
+    
+    let std_dev = sqrt(variance_sum / len(values))
+    
+    # Range
+    let range = max_val - min_val
+    
+    return {
+        "mean": mean,
+        "median": median,
+        "min": min_val,
+        "max": max_val,
+        "std_dev": std_dev,
+        "range": range,
+        "count": len(values)
+    }
+
+fn sort_list(values: List) -> List
+    """Simple bubble sort"""
+    let arr = values  # Create copy
+    let n = len(arr)
+    
+    for i in range(0, n)
+        for j in range(0, n - i - 1)
+            if arr[j] > arr[j + 1]
+                # Swap
+                let temp = arr[j]
+                arr[j] = arr[j + 1]
+                arr[j + 1] = temp
+    
+    return arr
+
+fn sqrt(x: Float) -> Float
+    """Calculate square root"""
+    if x < 0
+        return nil
+    if x == 0
+        return 0.0
+    
+    let guess = x / 2.0
+    for i in range(0, 10)  # Newton's method iterations
+        guess = (guess + x / guess) / 2.0
+    
+    return guess
+
+fn detect_outliers(values: List, std_dev_threshold: Int = 3) -> List
+    """Detect outliers using standard deviation"""
+    let stats = calculate_statistics(values)
+    let mean = stats["mean"]
+    let std = stats["std_dev"]
+    let threshold = std_dev_threshold * std
+    
+    let outliers = []
+    for i, val in enumerate(values)
+        if abs(val - mean) > threshold
+            outliers = append(outliers, {
+                "index": i,
+                "value": val,
+                "deviation": abs(val - mean) / std
+            })
+    
+    return outliers
+
+fn abs(x: Float) -> Float
+    """Absolute value"""
+    if x < 0
+        return 0 - x
+    return x
+
+fn detect_trends(time_series: List, window_size: Int = 5) -> List
+    """Detect uptrend/downtrend patterns"""
+    let trends = []
+    
+    for i in range(window_size, len(time_series))
+        let window = time_series[i - window_size:i]
+        
+        # Calculate moving average
+        let sum_val = 0
+        for val in window
+            sum_val = sum_val + val
+        
+        let avg = sum_val / len(window)
+        let current = time_series[i]
+        
+        let trend = if current > avg then "up" else "down"
+        trends = append(trends, {
+            "index": i,
+            "trend": trend,
+            "value": current,
+            "moving_avg": avg
+        })
+    
+    return trends
+
+fn correlation_analysis(x_values: List, y_values: List) -> Float
+    """Calculate Pearson correlation between two variables"""
+    if len(x_values) != len(y_values) or len(x_values) < 2
+        return 0.0
+    
+    let x_mean = sum(x_values) / len(x_values)
+    let y_mean = sum(y_values) / len(y_values)
+    
+    let numerator = 0.0
+    let x_denom = 0.0
+    let y_denom = 0.0
+    
+    for i in range(0, len(x_values))
+        let x_diff = x_values[i] - x_mean
+        let y_diff = y_values[i] - y_mean
+        
+        numerator = numerator + (x_diff * y_diff)
+        x_denom = x_denom + (x_diff * x_diff)
+        y_denom = y_denom + (y_diff * y_diff)
+    
+    if x_denom == 0 or y_denom == 0
+        return 0.0
+    
+    let denominator = sqrt(x_denom * y_denom)
+    return numerator / denominator
+
+fn segment_data(data_list: List, segment_size: Int) -> List
+    """Split data into segments"""
+    let segments = []
+    
+    for i in range(0, len(data_list), segment_size)
+        let segment = data_list[i:i + segment_size]
+        segments = append(segments, segment)
+    
+    return segments
+
+fn forecast_next_values(time_series: List, num_forecast: Int = 5) -> List
+    """Simple linear trend forecasting"""
+    if len(time_series) < 2
+        return []
+    
+    # Calculate slope using first and last points
+    let first = time_series[0]
+    let last = time_series[-1]
+    let slope = (last - first) / len(time_series)
+    
+    let forecasts = []
+    let current_idx = len(time_series)
+    let current_val = last
+    
+    for i in range(0, num_forecast)
+        current_val = current_val + slope
+        forecasts = append(forecasts, {
+            "period": current_idx + i,
+            "forecast": current_val
+        })
+    
+    return forecasts
+```
+
+---
+
+## File 3: database_handler.to
+
+```tombo
+# Database handling module
+
+use database
+use io
+use json
+
+fn initialize_database(db_path: String) -> Database
+    """Initialize SQLite database with tables"""
+    
+    try
+        let db = connect_database(
+            type: "sqlite",
+            path: db_path
+        )
+        
+        # Create tables if they don't exist
+        create_data_table(db)
+        create_analysis_table(db)
+        
+        return db
+    catch error
+        println("❌ Error initializing database: " + error)
+        return nil
+
+fn create_data_table(db: Database)
+    """Create main data table"""
+    let create_sql = """
+    CREATE TABLE IF NOT EXISTS data_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        source TEXT NOT NULL,
+        category TEXT,
+        value REAL,
+        unit TEXT,
+        quality_score REAL,
+        data_json TEXT
+    )
+    """
+    
+    try
+        execute_query(db, query: create_sql)
+    catch error
+        println("⚠️  Table may already exist: " + error)
+
+fn create_analysis_table(db: Database)
+    """Create analysis results table"""
+    let create_sql = """
+    CREATE TABLE IF NOT EXISTS analysis_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        analysis_type TEXT,
+        source_count INTEGER,
+        result_json TEXT,
+        confidence REAL
+    )
+    """
+    
+    try
+        execute_query(db, query: create_sql)
+    catch error
+        println("⚠️  Table may already exist: " + error)
+
+fn insert_data_record(db: Database, record: Dict)
+    """Insert a data record"""
+    let insert_sql = """
+    INSERT INTO data_records (source, category, value, unit, quality_score, data_json)
+    VALUES ('""" + record["source"] + """', '""" + record["category"] + """', 
+            """ + str(record["value"]) + """, '""" + record["unit"] + """',
+            """ + str(record["quality_score"]) + """, '""" + to_json(record) + """')
+    """
+    
+    try
+        execute_query(db, query: insert_sql)
+    catch error
+        println("❌ Error inserting record: " + error)
+
+fn query_records(db: Database, source: String, limit: Int = 100) -> List
+    """Query records from database"""
+    let query_sql = """
+    SELECT * FROM data_records 
+    WHERE source = '""" + source + """'
+    ORDER BY timestamp DESC
+    LIMIT """ + str(limit)
+    
+    try
+        let results = execute_query(db, query: query_sql)
+        return results
+    catch error
+        println("❌ Error querying records: " + error)
+        return []
+
+fn get_statistics_by_source(db: Database, source: String) -> Dict
+    """Get statistics for a particular data source"""
+    let query_sql = """
+    SELECT 
+        COUNT(*) as count,
+        AVG(value) as average,
+        MIN(value) as minimum,
+        MAX(value) as maximum,
+        AVG(quality_score) as avg_quality
+    FROM data_records
+    WHERE source = '""" + source + """'
+    """
+    
+    try
+        let results = execute_query(db, query: query_sql)
+        if len(results) > 0
+            return results[0]
+        return {}
+    catch error
+        println("❌ Error getting statistics: " + error)
+        return {}
+
+fn store_analysis_result(db: Database, analysis_type: String, 
+                        result: Dict, confidence: Float)
+    """Store analysis results"""
+    let insert_sql = """
+    INSERT INTO analysis_results (analysis_type, source_count, result_json, confidence)
+    VALUES ('""" + analysis_type + """', """ + str(result["source_count"]) + """,
+            '""" + to_json(result) + """', """ + str(confidence) + """)
+    """
+    
+    try
+        execute_query(db, query: insert_sql)
+    catch error
+        println("❌ Error storing analysis: " + error)
+
+fn export_data_to_csv(db: Database, source: String, filename: String)
+    """Export data to CSV format"""
+    let records = query_records(db, source: source, limit: 10000)
+    
+    # Create CSV header
+    let csv_content = "timestamp,source,category,value,unit,quality_score\n"
+    
+    # Add data rows
+    for record in records
+        csv_content = csv_content + 
+            str(record["timestamp"]) + "," +
+            record["source"] + "," +
+            record["category"] + "," +
+            str(record["value"]) + "," +
+            record["unit"] + "," +
+            str(record["quality_score"]) + "\n"
+    
+    # Write to file
+    write_file(path: filename, content: csv_content)
+    println("✓ Data exported to: " + filename)
+```
+
+---
+
+## File 4: main.to
+
+```tombo
+# Main application
+
+use io
+use time
+use json
+
+fn main()
+    """Main application flow"""
+    
+    println("\n╔════════════════════════════════════════════╗")
+    println("║   WEB DATA ANALYSIS PLATFORM v1.0         ║")
+    println("║   Real-Time Data Collection & Analysis    ║")
+    println("╚════════════════════════════════════════════╝\n")
+    
+    # Create directories
+    create_directory("./data")
+    create_directory("./logs")
+    create_directory("./reports")
+    
+    # Initialize database
+    println("🗄️  Initializing database...")
+    let db = initialize_database("./data/analytics.db")
+    
+    if db == nil
+        println("❌ Failed to initialize database")
+        return
+    
+    println("✓ Database ready\n")
+    
+    # Collect data from multiple sources
+    println("📊 Collecting data from sources...\n")
+    
+    # Source 1: Weather
+    println("📡 Fetching weather data...")
+    let weather = fetch_weather_data("New York")
+    let weather_quality = validate_data_quality(weather)
+    
+    if weather_quality["is_valid"]
+        println("✓ Weather data quality: " + str(weather_quality["quality_score"]) + "/100")
+        let clean_weather = normalize_data(weather)
+        insert_data_record(db, {
+            "source": "weather_api",
+            "category": "temperature",
+            "value": weather["temperature"] if hasattr(weather, "temperature") else 20.0,
+            "unit": "celsius",
+            "quality_score": weather_quality["quality_score"]
+        })
+    else
+        println("⚠️  Weather data quality issues:")
+        for issue in weather_quality["issues"]
+            println("   - " + issue)
+    
+    # Source 2: Market Data
+    println("\n📊 Fetching market data...")
+    let tickers = ["AAPL", "GOOGL", "MSFT"]
+    let market_data = []
+    
+    for ticker in tickers
+        println("  Fetching " + ticker + "...")
+        let stock = fetch_market_data(ticker)
+        
+        if len(stock) > 0
+            market_data = append(market_data, stock)
+            insert_data_record(db, {
+                "source": "market_api",
+                "category": ticker,
+                "value": stock["price"],
+                "unit": "USD",
+                "quality_score": 95.0
+            })
+    
+    println("✓ Collected data for " + str(len(market_data)) + " tickers")
+    
+    # Analyze collected data
+    println("\n🔍 Analyzing collected data...\n")
+    
+    # Get statistics
+    let weather_stats = get_statistics_by_source(db, source: "weather_api")
+    if len(weather_stats) > 0
+        println("🌡️  Weather Statistics:")
+        println("   Mean: " + str(weather_stats["average"]))
+        println("   Min: " + str(weather_stats["minimum"]))
+        println("   Max: " + str(weather_stats["maximum"]))
+    
+    let market_stats = get_statistics_by_source(db, source: "market_api")
+    if len(market_stats) > 0
+        println("\n💹 Market Statistics:")
+        println("   Average Price: $" + str(market_stats["average"]))
+        println("   Minimum: $" + str(market_stats["minimum"]))
+        println("   Maximum: $" + str(market_stats["maximum"]))
+    
+    # Detect outliers in market data
+    println("\n⚠️  Outlier Detection:")
+    let prices = [s["price"] for s in market_data]
+    let outliers = detect_outliers(prices)
+    
+    if len(outliers) > 0
+        println("Found " + str(len(outliers)) + " potential outliers:")
+        for outlier in outliers
+            println("  • Index " + str(outlier["index"]) + 
+                   ": $" + str(outlier["value"]) + 
+                   " (deviation: " + str(outlier["deviation"]) + "σ)")
+    else
+        println("No significant outliers detected")
+    
+    # Trend analysis
+    println("\n📈 Trend Analysis:")
+    let trends = detect_trends(prices)
+    
+    let up_count = 0
+    let down_count = 0
+    for trend in trends
+        if trend["trend"] == "up"
+            up_count = up_count + 1
+        else
+            down_count = down_count + 1
+    
+    println("Uptrends: " + str(up_count))
+    println("Downtrends: " + str(down_count))
+    
+    # Forecast
+    println("\n🔮 Forecasting next 5 periods:")
+    let forecast = forecast_next_values(prices, num_forecast: 5)
+    
+    for f in forecast
+        println("  Period " + str(f["period"]) + ": $" + str(f["forecast"]))
+    
+    # Store analysis results
+    println("\n💾 Storing analysis results...")
+    store_analysis_result(db, 
+        analysis_type: "market_analysis",
+        result: {
+            "source_count": len(market_data),
+            "outliers_found": len(outliers),
+            "uptrend_count": up_count,
+            "downtrend_count": down_count
+        },
+        confidence: 0.92
+    )
+    println("✓ Analysis results stored")
+    
+    # Export data
+    println("\n📤 Exporting data...")
+    export_data_to_csv(db, source: "market_api", filename: "./reports/market_export.csv")
+    
+    # Generate report
+    let report = generate_analysis_report(
+        weather_stats,
+        market_stats,
+        len(outliers),
+        up_count,
+        down_count
+    )
+    
+    println("\n" + report)
+    
+    # Save report
+    write_file(path: "./reports/analysis_report.txt", content: report)
+    
+    println("\n✅ Analysis Complete!")
+    println("📁 Results saved to ./reports/\n")
+
+fn generate_analysis_report(weather: Dict, market: Dict, 
+                           outliers: Int, ups: Int, downs: Int) -> String
+    """Generate formatted analysis report"""
+    
+    let report = ""
+    report = report + "\n╔════════════════════════════════════════════╗\n"
+    report = report + "║      DATA ANALYSIS REPORT                  ║\n"
+    report = report + "║      " + str(time_now()) + "          ║\n"
+    report = report + "╚════════════════════════════════════════════╝\n\n"
+    
+    report = report + "📊 WEATHER DATA SUMMARY:\n"
+    if len(weather) > 0
+        report = report + "  • Records Analyzed: " + str(weather["count"]) + "\n"
+        report = report + "  • Average: " + str(weather["average"]) + "°C\n"
+        report = report + "  • Range: " + str(weather["minimum"]) + " to " + str(weather["maximum"]) + "°C\n"
+    else
+        report = report + "  • No data available\n"
+    
+    report = report + "\n💹 MARKET DATA SUMMARY:\n"
+    if len(market) > 0
+        report = report + "  • Stocks Analyzed: " + str(market["count"]) + "\n"
+        report = report + "  • Average Price: $" + str(market["average"]) + "\n"
+        report = report + "  • Price Range: $" + str(market["minimum"]) + " to $" + str(market["maximum"]) + "\n"
+    else
+        report = report + "  • No data available\n"
+    
+    report = report + "\n⚠️  ANOMALIES DETECTED:\n"
+    report = report + "  • Outliers: " + str(outliers) + "\n"
+    
+    report = report + "\n📈 TREND ANALYSIS:\n"
+    report = report + "  • Uptrends: " + str(ups) + "\n"
+    report = report + "  • Downtrends: " + str(downs) + "\n"
+    
+    report = report + "\n✅ STATUS: Analysis Complete\n"
+    report = report + "═" * 46 + "\n"
+    
+    return report
+
+# Run main application
+main()
+```
+
+---
+
+## Features Demonstrated
+
+### 1. **Web Data Collection**
+- API integration
+- Error handling
+- Data validation
+- Quality checking
+
+### 2. **Data Processing**
+- Normalization
+- Cleaning
+- Aggregation
+- Segmentation
+
+### 3. **Statistical Analysis**
+- Descriptive statistics
+- Outlier detection
+- Trend analysis
+- Forecasting
+- Correlation analysis
+
+### 4. **Database Operations**
+- SQLite integration
+- Table creation
+- CRUD operations
+- Complex queries
+- Data export
+
+### 5. **Real-World Patterns**
+- Modular architecture
+- Error handling
+- Logging
+- Report generation
+- File I/O
+
+---
+
+## Running the Project
+
+```bash
+# Create project structure
+mkdir web_analysis
+cd web_analysis
+mkdir data logs reports
+
+# Run application
+python -m src.main main.to
+```
+
+---
+
+**This demonstrates enterprise-level data engineering in Tombo!**

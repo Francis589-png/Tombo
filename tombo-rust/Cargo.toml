@@ -1,0 +1,23 @@
+[package]
+name = "tombo"
+version = "1.0.0"
+edition = "2021"
+authors = ["Tombo Team"]
+license = "MIT"
+description = "TOMBO (TO) - A universal interpreted programming language"
+
+[[bin]]
+name = "tombo"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+rustyline = "14.0"
+anyhow = "1.0"
+thiserror = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "tombo-language"
+version = "0.1.0"
+description = "Tombo (TO) - A universal interpreted programming language"
+authors = ["Tombo Team"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "tombo", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0"
+pytest-cov = "^4.0"
+black = "^23.0"
+isort = "^5.0"
+flake8 = "^6.0"
+mkdocs = "^1.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

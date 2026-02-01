@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+.env.*
+venv/
+.Python
+build/
+dist/
+*.egg-info/
+*.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+pip-wheel-metadata/
+
+# byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+
+# C extensions
+*.so
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.sqlite3
+*.db
+
+# Coverage
+coverage.xml
+coverage/
+
+# Rust
+**/target/
+/Cargo.lock
+cargo-install-macro.rs
+
+# Node (if any)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Archives
+*.tar.gz
+*.zip
+*.egg
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Tombo-specific
+tombo.sock
+tombo.pid
+
+# Local test artifacts
+tests_datalake/
+
+# Ignore release artifacts
+dist/
+
+# End of .gitignore
